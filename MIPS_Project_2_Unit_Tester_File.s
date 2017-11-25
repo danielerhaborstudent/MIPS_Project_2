@@ -72,8 +72,8 @@ beq $t6, $zero, after_print_temp_string	# Make the string empty by turning every
 									# there into a NULL character until we hit a NULL character in the string
 
 
-li $t6, 0	
-sb $t6, temp_string($t1)			# Store the NULL character into the temp_string[$t1]
+
+sb $zero, temp_string($t1)			# Store the NULL character into the temp_string[$t1]
 
 addi $t1, $t1, 1				# $t1 += 1
 j Make_all_zero					# Go back to loop header
@@ -96,8 +96,8 @@ beq $t6, $zero, after_Load_Char	# Make the string empty by turning every charact
 									# there into a NULL character until we hit a NULL character in the string
 
 
-li $t6, 0	
-sb $t6, temp_string($t1)			# Store the NULL character into the temp_string[$t1]
+	
+sb $zero, temp_string($t1)			# Store the NULL character into the temp_string[$t1]
 
 addi $t1, $t1, 1				# $t1 += 1
 j Make_all_zero_exit					# Go back to loop header

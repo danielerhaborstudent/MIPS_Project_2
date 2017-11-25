@@ -40,8 +40,8 @@ sb $t5, temp_string($t1)
 j print_temp_string
 
 when_not_commma:
-beq $t5, 10, print_exit_load_char	#If the character is a newline print empty string and exit
-beq $t5, $zero, print_exit_load_char	#If the character is a NULL character print empty string and exit
+beq $t5, 10, print_exit_load_char	#If the character is a newline store a newline, print the temp_string and exit
+beq $t5, $zero, print_exit_load_char	#If the character is a NULL character store a newline, print the temp_string and exit
 
 
 sb $t5 , temp_string($t1)
@@ -80,6 +80,9 @@ j Make_all_zero					# Go back to loop header
 
 
 print_exit_load_char:
+
+li $t5, 10					# Load a newline into the temp_string[$t1]; this will help us when we are validating
+sb $t5, temp_string($t1)
 
 li $v0, 4
 la $a0, temp_string 	# Print the temp_string

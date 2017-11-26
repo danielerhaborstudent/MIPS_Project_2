@@ -13,7 +13,12 @@ curr_state:
 			.space 1		# State to store integer values from 0 through 9
 					
 temp_string: .asciiz "" #	Declaring an empty string. This string will take all input up until the comma
-hex_8_or_more: .asciiz ""	# Declaring an empty string. This string will store 
+hex_8_or_more: .asciiz ""	# Declaring an empty string. This string will store a hex string with 8 or more valid hex_characters either ending with a comma or newline
+
+indexOf_hex_8_or_more: 			 # Will use this to store $t0 which will hold the memory address of hex_8_or_more while in state_ 5 
+								 # so I can iterate while I am storing the next character
+						.align 2 # Has to be a word because memory locations are of the form 0x7fffffff basically 1 word; 4 bytes	
+						.space 4
 
 print_NaNComma: .asciiz "NaN,"		# String for "NaN,"
 
@@ -86,6 +91,9 @@ j Load_Char
 ###Where my state_machine will be and hence where subprogram 2 and 3 and 1 are called
 
 State_Machine:
+
+la $t0, hex_8_or_more                   # When I enter the state machine store the address of hex_8_or_more in indexOf_hex_8_or_more($zero) to be used later
+sw $t0, indexOf_hex_8_or_more($zero)
 
 state_0:
 # Initial state where we read the first char from temp_string which could be of many forms "\n" | "FffF[space],"|
@@ -181,32 +189,88 @@ j state_5						# If I neither see a [space] nor a ',' nor a '\n' it must be a ch
 state_5:
 
 # We are in state_5; we have read the first valid or invalid character
-# or the first valid or invalid character after initial [space]
+# or the first valid(s) or invalid character after initial [space]
 # These occur before '\n' or comma never after
 
 li $t0, 5
 sb $t0, curr_state($zero)		# curr_state = 5
 
 
+bge $t8, 48, check_less_equal_57		# If $t8 >= 48. If true check if $t8 <= 57
 
-blt $t8, 48, state_6	# if $t8 < 48 then it is an invalid char so we go to state_6 to deal with that
-bge $t8, 
+# else !($t8 >= 48) then $t8 < 48 but check if it's a '\t', '\n', 32(Space) or ',' first before assuming invalid
+# because we read the next character too so it may not always be valid or invalid. We could read a series of 
+# valid characters then a space or comma or newline whille iterating through temp_string
+
+beq $t8, '\t', state_7					# If it's a '\t' go to state_7 
+beq $t8, '\n', state_9					# If it's a '\n' go to state_9
+beq $t8, 32, state_7					# If it's a space go to state_7
+beq $t8, ',', state_8					# If it's a comma we deal with that in state_8
+
+j state_6								# if none of the above then invalid; because it is invalid so we deal with that in state_6
+
+check_less_equal_57:
+ble $t8, 57, store_get_next_remain		# $t8 <= 57. Basically if $t8 >= 48 && $t8 <= 57; '0' to '9'; store it, get next char in temp_string and remain in state_5
+
+bge $t8, 58, check_less_equal_64		# If $t8 >= 58 we check if $t8 <= 64 so we can be sure that is is invalid. $t8 <= 57 already 
+										# handles the case when it is false
+check_less_equal_64:
+ble $t8, 64, state_6					# We handled $t8 >= 58; now we handle when $t8 <= 64; If both are true we know it is invalid so we go to state_6
+
+
+bge $t8, 65, check_less_equal_70		# If above was false check $t8 >= 65. If true check $t8 <= 70
+check_less_equal_70:
+ble $t8, 70, store_get_next_remain		# If $t8 <= 70 && $t8 >= 65 then it's in 'A' to 'F'; store it, get next char in temp_string and remain in state_5
+
+bge $t8, 71, check_less_equal_96		#  $t8 >= 71; If true check $t8 <= 96; Will never be false because the above case handled that already.
+check_less_equal_96:					#
+ble $t8, 96, state_6					#	$t8 <= 86; If true it is definitely an invalid character so we go to state_6 to handle those.
+
+bge $t8, 97, check_less_equal_102		# $t8 >= 97; If true check $t8 <= 102; Above case already handled when false.
+check_less_equal_102:
+ble $t8, 102, store_get_next_remain		# If $t8 <= 102 && $t8 >= 97 then it's in 'a' to 'f'; store it, get next char in temp_string and remain in state_5
+
+j state_6								# If !(t8 <= 102) then it is definitely invalid so we go to state_6
 
 
 
 
 
 
-store_remain_get_next:
+
+
+
+
+
+
+store_get_next_remain:
+
+lw $t0, indexOf_hex_8_or_more($zero)		# Get the address of hex_8_or_more from indexOf_hex_8_or_more($zero)
+
+sb $t8, 0($t0)								# Store the validated character at the right address in hex_8_or_more
+
+addi $t0, $t0, 1 			# increment $t0 basically incrementing the value of indexOf_hex_8_or_more($zero) by 1 basically incrementing the memory address
+							# of hex_8_or_more by 1
+
+sw $t0, indexOf_hex_8_or_more($zero) # save the new address to be reused later in other states.
 # Get the next character
 addi $t1, $t1, 1				# $t1 += 1			
 lb $t8, temp_string($t1)		# temp_string[$t1]
+
+j state_5
+
+
 
 
 
 state_6:
 
 
+state_7:
+
+state_8:
+
+state_9:
 
 
 

@@ -4,8 +4,9 @@
 .data # Data declaration section
 user_input: .space 1001		# Allocating space for user_input of entire 1000 character string + NULL
 
-indexOf_user_input: 		# Use to store value of $t3 which is basically the memory location of user_user input. This acts like an index whe we do $t3 += 1
+indexOf_user_input: 		# Use to store value of $t3 which is basically the memory location of user_input. This acts like an index whe we do $t3 += 1
 							# I am trying to preserve it incase we are forced to use $t3 later either in the state machines or in the sub_programs
+							# has to be able to hold a word because memory locations are of the form 0x7fffffff basically 1 word; 4 bytes
 				.align 2
 				.space 4
 curr_state:
@@ -13,6 +14,11 @@ curr_state:
 					
 temp_string: .asciiz "" #	Declaring an empty string. This string will take all input up until the comma
 hex_8_or_more: .asciiz ""	# Declaring an empty string. This string will store 
+
+print_NaNComma: .asciiz "NaN,"		# String for "NaN,"
+
+print_NaN: .asciiz "NaN"		# String for "NaN"
+
 
 
 .text # Assembly language instructions
@@ -42,11 +48,11 @@ sw $t3, indexOf_user_input($zero)		# Save $t3 in indexOf_user_input
 
 
 
-beq $t5, 44, when_comma	#Store the character, but if the character is a comma, store it and print the string
+beq $t5, 44, when_comma	#Store the character, but if the character is a comma, store it and go to State_Machine
 j when_not_commma
 when_comma:
 sb $t5, temp_string($t1)
-j print_temp_string
+j State_Machine
 
 when_not_commma:
 beq $t5, 10, print_exit_load_char	#If the character is a newline store a newline, print the temp_string and exit
@@ -64,17 +70,18 @@ j Load_Char 				# Go back to Load_char to loop the next character
 
 
 
-after_print_temp_string:	# After we are done printing temp_string that ends with a comma and making it empty 
+next_temp_string:	# After we are done making temp_string that ended in a comma empty 
+					# we get the next temp_string via iterating through user_input
 lw $t3, indexOf_user_input($zero)  # load $t3 in indexOf_user_input
 addi $t3, $t3, 1			# $t3 = $t3 + 1 to offset address at user_input by 1 to get the next char in input_string (which would be the value after the comma)
 li $t1, 0					# we initialize the index for temp_string which is $t1
 j Load_Char
 
-print_temp_string:		# We print the temp_string then make the string an empty string so we can re-use it again
+# print_temp_string:		# We print the temp_string then make the string an empty string so we can re-use it again
 
-li $v0, 4
-la $a0, temp_string 	# Print the temp_string
-syscall
+# li $v0, 4
+# la $a0, temp_string 	# Print the temp_string
+# syscall
 
 ###Where my state_machine will be and hence where subprogram 2 and 3 and 1 are called
 
@@ -93,7 +100,7 @@ lb $t8, temp_string($t1)		# temp_string[$t1]
 beq $t8, '\n', state_3 		# If the first character I see is a '\n' go to state_3
 
 beq $t8, '\t', state_4		# If the first character is a space or a tab go to state_4
-beq $t8, 'Space', state_4 
+beq $t8, 32, state_4 
 
 beq $t8, ',', state_1		# If the first character I see is a comma go to state_1
 
@@ -117,27 +124,101 @@ beq $t8, $zero, state_2			# If the next character after the comma is NUL then go
 
 
 state_2:
+# We are in state_2
 li $t0, 2
 sb $t0, curr_state($zero)  # curr_state = 2
+
+li $v0, 4
+la $a0, print_NaNComma		# print("Nan,")
+syscall
+
+j after_State_Machine			# We then leave the state_machine and get the next temp_string
 
 
 
 
 state_3:
 
+# We are in state_3
+# This means that $t8 = '\n' we have read a newline. Maybe after a space, 
+# or after some invalid character was reached or just initially
+# We just print("NaN") and exit the program
+li $t0, 3
+sb $t0, curr_state($zero)		# curr_state = 3
+
+
+li $v0, 4
+la $a0, print_NaN  # print("NaN")
+syscall
+
+j after_Load_Char # We stop our iteration of user_input because we've reached the end. and just exit the program
+
+
+
+
 state_4:
+
+# We are in state_4; we have read the first space or tab. Or we are still reading 
+# spaces or tabs before a valid char, invalid char, comma or a newline
+
+li $t0, 4
+sb $t0, curr_state($zero)		# curr_state = 4
+
+# Get the next character
+addi $t1, $t1, 1				# $t1 += 1			
+lb $t8, temp_string($t1)		# temp_string[$t1]
+
+beq $t8, '\t', state_4			# If the next character read is a space or tab stay in state_4
+beq $t8, 32, state_4
+
+beq $t8, ',', state_1			# If the next character read is a comma go to state_1
+beq $t8, '\n', state_3			# If it is a newline go to state_3
+
+j state_5						# If I neither see a [space] nor a ',' nor a '\n' it must be a character. Go to state_5
+
+
 
 state_5:
 
+# We are in state_5; we have read the first valid or invalid character
+# or the first valid or invalid character after initial [space]
+# These occur before '\n' or comma never after
+
+li $t0, 5
+sb $t0, curr_state($zero)		# curr_state = 5
+
+
+
+blt $t8, 48, state_6	# if $t8 < 48 then it is an invalid char so we go to state_6 to deal with that
+bge $t8, 
 
 
 
 
 
+
+store_remain_get_next:
+# Get the next character
+addi $t1, $t1, 1				# $t1 += 1			
+lb $t8, temp_string($t1)		# temp_string[$t1]
+
+
+
+state_6:
+
+
+
+
+
+
+
+
+
+after_State_Machine:
 li $t1, 0  # Re-initialize $t1 temp_string's index to 0
 Make_all_zero:
 lb $t6, temp_string($t1)
-beq $t6, $zero, after_print_temp_string	# Make the string empty by turning every character previously 
+beq $t6, $zero, next_temp_string	# Make the string empty by turning every character previously 
 									# there into a NULL character until we hit a NULL character in the string
 
 

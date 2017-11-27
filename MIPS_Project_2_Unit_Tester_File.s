@@ -24,6 +24,10 @@ print_NaNComma: .asciiz "NaN,"		# String for "NaN,"
 
 print_NaN: .asciiz "NaN"		# String for "NaN"
 
+print_too_largeC: .asciiz "too large,"
+
+print_too_large: .asciiz "too large"
+
 
 
 .text # Assembly language instructions
@@ -60,8 +64,8 @@ sb $t5, temp_string($t1)
 j State_Machine
 
 when_not_commma:
-beq $t5, 10, print_exit_load_char	#If the character is a newline store a newline, print the temp_string and exit
-beq $t5, $zero, print_exit_load_char	#If the character is a NULL character store a newline, print the temp_string and exit
+beq $t5, 10, store_endl_enter_machine	#If the character is a newline store a newline in temp_string and enter the state machine
+beq $t5, $zero, store_endl_enter_machine	#If the character is a NULL character store a newline in temp_string and enter the state machine
 
 
 sb $t5 , temp_string($t1)		#Store the character that is not a comma, or \0 or \n in temp_string 
@@ -82,11 +86,7 @@ addi $t3, $t3, 1			# $t3 = $t3 + 1 to offset address at user_input by 1 to get t
 li $t1, 0					# we initialize the index for temp_string which is $t1
 j Load_Char
 
-# print_temp_string:		# We print the temp_string then make the string an empty string so we can re-use it again
 
-# li $v0, 4
-# la $a0, temp_string 	# Print the temp_string
-# syscall
 
 ###Where my state_machine will be and hence where subprogram 2 and 3 and 1 are called
 
@@ -118,6 +118,10 @@ j state_5					# If I neither see a '\n' nor a [space] nor a ',' it must be a cha
 
 state_1:
 # We are in state_1
+# We read our first comma either after temp_string was declared invalid
+# Or after we read some spaces initially with nothing else
+# After we read only our first comma
+
 li $t0, 1
 sb $t0, curr_state($zero)  # curr_state = 1
 
@@ -126,13 +130,14 @@ addi $t1, $t1, 1				# $t1 += 1
 lb $t8, temp_string($t1)		# temp_string[$t1]
 
 beq $t8, $zero, state_2			# If the next character after the comma is NUL then go to state_2 hence 
-								# the value we read from temp_string was ",\0"	because temp_string is zero terminated
+								# the value we read from temp_string was ",\0" or "invalid,\0" or "[space],\0"	because temp_string is zero terminated
 								# No other cases possible because temp_string is either comma terminated or '\n' terminated
-
 
 
 state_2:
 # We are in state_2
+# See state_1 description
+
 li $t0, 2
 sb $t0, curr_state($zero)  # curr_state = 2
 
@@ -323,25 +328,48 @@ sb $t8, 0($t0)								# Store the comma at the right address in hex_8_or_more
 
 li $t9, 0				# Our index to iterate through hex_8_or_more
 check_too_large_comma:
-# The index at which the comma is at in hex_8_or_more is > 8 then hex_8_or_more is too large so we print("Too large")
+
+# If the index at which the comma is at in hex_8_or_more is > 8 then hex_8_or_more is too large so we print("Too large")
 # hex_8_or_more[0] to hex_8_or_more[8] is fine with hex_8_or_more[7] being the 8th valid char and hex_8_or_more[8] being the comma.
 # Anything greater then print("Too large,")
+
 lb $t8, hex_8_or_more($t9) # $t8 = hex_8_or_more[$t9]
+beq $t8, ',', check_index	# When we hit a comma we check if the index > 8
+addi $t9, $t9, 1
+j check_too_large_comma
 
-beq 
+check_index:
+
+bgt $t9, 8, tooLargeC_zero_Next_temp_string		# If the index is greater than 8, we print("Too large,"), 
+												# zero out hex_8_or_more and get the next_temp (we have to leave the state machine)
+
+li $v0, 4			# Else we print hex_8_or_more with the comma and get the next temp_string
+la $a0, hex_8_or_more # For now just print the value later on we will call sub_2 and then sub_3 here 
+syscall
+
+li $t9, 0			# initalize index $t9 to iterate hex_8_or_more as 0
+j zero_Hex_8_or_more_leave_machine
 
 
+tooLargeC_zero_Next_temp_string:
 
+li $v0, 4
+la $a0, print_too_largeC		# Print("too large,")
+syscall
 
-
-
-
-
+li $t9, 0  # initalize index $t9 to iterate hex_8_or_more as 0
+zero_Hex_8_or_more_leave_machine:
+lb $t8, hex_8_or_more($t9)				# If hex_8_or_more[$t9] == 0 then leave the state machine. We hit the end of hex_8_or_more. 
+beq $t8, $zero, after_State_Machine 	# Else hex_8_or_more[$t9] = 0 
+sb $zero, hex_8_or_more($t9)			# Keep iterating through that
+addi $t9, $t9, 1
+j zero_Hex_8_or_more_leave_machine
 
 
 
 
 state_9:
+
 
 
 
@@ -355,51 +383,23 @@ Make_all_zero:
 lb $t6, temp_string($t1)
 beq $t6, $zero, next_temp_string	# Make the string empty by turning every character previously 
 									# there into a NULL character until we hit a NULL character in the string
-
-
+									# When we zero out temp_string we get the next temp_string from user_input
 
 sb $zero, temp_string($t1)			# Store the NULL character into the temp_string[$t1]
-
 addi $t1, $t1, 1				# $t1 += 1
 j Make_all_zero					# Go back to loop header
 
 
-print_exit_load_char:
 
+store_endl_enter_machine:
 li $t5, 10					# Load a newline into the temp_string[$t1]; this will help us when we are validating
 sb $t5, temp_string($t1)
+j State_Machine
 
-li $v0, 4
-la $a0, temp_string 	# Print the temp_string
-syscall
-
-li $t1, 0  # Re-initialize $t1 temp_string's index to 0
-
-Make_all_zero_exit:
-lb $t6, temp_string($t1)
-beq $t6, $zero, after_Load_Char	# Make the string empty by turning every character previously 
-									# there into a NULL character until we hit a NULL character in the string
-
-
-	
-sb $zero, temp_string($t1)			# Store the NULL character into the temp_string[$t1]
-
-addi $t1, $t1, 1				# $t1 += 1
-j Make_all_zero_exit					# Go back to loop header
 
 
 
 after_Load_Char:
-
-
-
-
-
-
-
-
-
-
 
 
 

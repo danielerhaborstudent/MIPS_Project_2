@@ -329,9 +329,9 @@ sb $t8, 0($t0)								# Store the comma at the right address in hex_8_or_more
 li $t9, 0				# Our index to iterate through hex_8_or_more
 check_too_large_comma:
 
-# If the index at which the comma is at in hex_8_or_more is > 8 then hex_8_or_more is too large so we print("Too large")
+# If the index at which the comma is at in hex_8_or_more is > 8 then hex_8_or_more is too large so we print("too large,")
 # hex_8_or_more[0] to hex_8_or_more[8] is fine with hex_8_or_more[7] being the 8th valid char and hex_8_or_more[8] being the comma.
-# Anything greater then print("Too large,")
+# Anything greater then print("too large,")
 
 lb $t8, hex_8_or_more($t9) # $t8 = hex_8_or_more[$t9]
 beq $t8, ',', check_index	# When we hit a comma we check if the index > 8
@@ -340,7 +340,7 @@ j check_too_large_comma
 
 check_index:
 
-bgt $t9, 8, tooLargeC_zero_Next_temp_string		# If the index is greater than 8, we print("Too large,"), 
+bgt $t9, 8, tooLargeC_zero_Next_temp_string		# If the index is greater than 8, we print("too large,"), 
 												# zero out hex_8_or_more and get the next_temp (we have to leave the state machine)
 
 li $v0, 4			# Else we print hex_8_or_more with the comma and get the next temp_string
@@ -369,7 +369,48 @@ j zero_Hex_8_or_more_leave_machine
 
 
 state_9:
+# We are in state_9 so we read "valid_char(s)\n" or "valid_char(s)[space]\n"
+# We will just store the '\n' as part of hex_8_string_or_more so we can know what to print when we intend on calling sub_2 and sub_3
 
+li $t0, 9
+sb $t0, curr_state($zero)		# curr_state = 9
+
+lw $t0, indexOf_hex_8_or_more($zero)		# Get the address of hex_8_or_more from indexOf_hex_8_or_more($zero)
+sb $t8, 0($t0)								# Store the '\n' at the right address in hex_8_or_more
+
+
+li $t9, 0				# Our index to iterate through hex_8_or_more
+check_too_large_newline:
+
+# If the index at which the newline is at in hex_8_or_more is > 8 then hex_8_or_more is too large so we print("Too large")
+# hex_8_or_more[0] to hex_8_or_more[8] is fine with hex_8_or_more[7] being the 8th valid char and hex_8_or_more[8] being the comma.
+# Anything greater then print("Too large,")
+
+lb $t8, hex_8_or_more($t9) # $t8 = hex_8_or_more[$t9]
+beq $t8, '\n', check_index_N	# When we hit a newline we check if the index > 8
+addi $t9, $t9, 1
+j check_too_large_newline
+
+check_index_N:
+bgt $t9, 8, tooLarge_exit_program		# If the index $t9 > 8 then print("too large") and exit the program
+
+# Else print hex_8_or_more
+li $t9, 0							# printing temporarily for now. Here sub_2 will be called then sub_3 to print the value		
+print_char_hex_8_or_more_without_endl:
+lb $t8, hex_8_or_more($t9)				# iterate through hex_8_or_more
+beq $t8, '\n', after_Load_Char			# and print the characters until we see a newline. When we see a newline we exit the entire program because we are done
+										# with user_input 
+li $v0, 11			# Print character in $t8 
+move $a0, $t8
+syscall
+
+tooLarge_exit_program:		
+
+li $v0, 4
+la $a0, print_too_large 	#print("too large")
+syscall
+
+j after_Load_Char			# and exit the program
 
 
 

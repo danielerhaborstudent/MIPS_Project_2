@@ -49,7 +49,7 @@ Load_Char:
 
 
 lb $t5, 0($t3)				# $t5 = $t3[0] 
-sw $t3, indexOf_user_input($zero)		# Save $t3 in indexOf_user_input
+sw $t3, indexOf_user_input($zero)		# Save $t3(which is holding a memory address) in indexOf_user_input
 
 
 
@@ -249,26 +249,97 @@ lw $t0, indexOf_hex_8_or_more($zero)		# Get the address of hex_8_or_more from in
 
 sb $t8, 0($t0)								# Store the validated character at the right address in hex_8_or_more
 
-addi $t0, $t0, 1 			# increment $t0 basically incrementing the value of indexOf_hex_8_or_more($zero) by 1 basically incrementing the memory address
-							# of hex_8_or_more by 1
+addi $t0, $t0, 1 			# increment $t0 basically incrementing the value in indexOf_hex_8_or_more($zero) by 1 basically incrementing the memory address
+							# of hex_8_or_more by 1, so we get the next position in the hex_8_or_more string
 
 sw $t0, indexOf_hex_8_or_more($zero) # save the new address to be reused later in other states.
 # Get the next character
 addi $t1, $t1, 1				# $t1 += 1			
 lb $t8, temp_string($t1)		# temp_string[$t1]
 
-j state_5
+j state_5				# Remain in state_5 
 
 
 
 
 
 state_6:
+# We are now in state_6
+# Here we read. We know that the temp_string is invalid because it could be like "FFf@," | "FF[space]F\n" 
+# Since we know it is invalid we just keep reading the rest of the characters until we see a '\n' or a comma
+
+li $t0, 6
+sb $t0, curr_state($zero)		# curr_state = 6
+
+addi $t1, $t1, 1
+lb $t8, temp_string($t1)		# Get the next character
+
+
+beq $t8, ',', state_1		# We just keep reading characters until we either hit a ',' or a '\n' to tell us what state to go to to either print("NaN,") or print("NaN")
+beq $t8, '\n', state_3		# Hence we will stay in state_6 until we find a ',' or '\n'
+
+
+j state_6			# basically in essence just remaining in state_6 and reading characters
+
+
+
 
 
 state_7:
 
+# We are in state_7. We have read a valid char or a series of valid char from temp_string but we hit either a space or a tab.
+# We will either read more successive spaces or tabs and remain in this state or we read any character that is not a '\n', ',' or '\t'
+# Then it is a character so we go to the invalid state_6
+
+li $t0, 7
+sb $t0, curr_state($zero)		# curr_state = 7
+
+addi $t1, $t1, 1
+lb $t8, temp_string($t1)		# Get the next character
+
+beq $t8, 32, state_7 		# If we keep reading spaces or tabs we remain in state_7
+beq $t8, '\t', state_7
+beq $t8, ',', state_8		# If we read a comma we go to state_8
+beq $t8, '\n', state_9		# If we read a newline we go to state_9
+
+j state_6		# If non of the above are true then we definitely read a character but since we just read "valid_char[space]some_char" 
+				# We know the entire string is invalid so we go to state_6 to handle that
+
+
+
+
 state_8:
+
+# We are in state_8 we read a "valid_char(s)[space]," or "valid_char(s)," 
+# We will just store the comma as part of hex_8_string_or_more so we can know what to print when we intend on calling sub_2 and sub_3
+
+li $t0, 8
+sb $t0, curr_state($zero)		# curr_state = 8
+
+
+lw $t0, indexOf_hex_8_or_more($zero)		# Get the address of hex_8_or_more from indexOf_hex_8_or_more($zero)
+sb $t8, 0($t0)								# Store the comma at the right address in hex_8_or_more
+
+
+li $t9, 0				# Our index to iterate through hex_8_or_more
+check_too_large_comma:
+# The index at which the comma is at in hex_8_or_more is > 8 then hex_8_or_more is too large so we print("Too large")
+# hex_8_or_more[0] to hex_8_or_more[8] is fine with hex_8_or_more[7] being the 8th valid char and hex_8_or_more[8] being the comma.
+# Anything greater then print("Too large,")
+lb $t8, hex_8_or_more($t9) # $t8 = hex_8_or_more[$t9]
+
+beq 
+
+
+
+
+
+
+
+
+
+
+
 
 state_9:
 

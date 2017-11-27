@@ -39,10 +39,10 @@ la $a0, user_input
 li $a1, 1001				#Read as many as 1000 characters + NULL into user_input
 syscall
 
-##Print Newline
-li $v0, 11
-la $a0, '\n'
-syscall	
+# ##Print Newline
+# li $v0, 11
+# la $a0, '\n'
+# syscall	
 
 	
 li $t1, 0		# $t1 = 0	index for temp_string
@@ -57,7 +57,7 @@ sw $t3, indexOf_user_input($zero)		# Save $t3(which is holding a memory address)
 
 
 
-beq $t5, 44, when_comma	#Store the character, but if the character is a comma, store it and go to State_Machine
+beq $t5, ',', when_comma	#Store the character, but if the character is a comma, store it and go to State_Machine
 j when_not_commma
 when_comma:
 sb $t5, temp_string($t1)
@@ -272,10 +272,20 @@ state_6:
 # We are now in state_6
 # Here we read. We know that the temp_string is invalid because it could be like "FFf@," | "FF[space]F\n" 
 # Since we know it is invalid we just keep reading the rest of the characters until we see a '\n' or a comma
+# We should zero_out hex_8_or_more
 
 li $t0, 6
 sb $t0, curr_state($zero)		# curr_state = 6
 
+li $t0, 0
+zero_Hex_8_or_more_while_in_6:			# Zero out the valid characters that could have been stored in hex_8_or_more
+lb $t8, hex_8_or_more($t0)				# We could use hex_8_or_more for another temp_string
+beq $t8, $zero, keep_reading_characters_6
+addi $t0, $t0, 1
+j zero_Hex_8_or_more_while_in_6
+
+
+keep_reading_characters_6:
 addi $t1, $t1, 1
 lb $t8, temp_string($t1)		# Get the next character
 
@@ -284,7 +294,7 @@ beq $t8, ',', state_1		# We just keep reading characters until we either hit a '
 beq $t8, '\n', state_3		# Hence we will stay in state_6 until we find a ',' or '\n'
 
 
-j state_6			# basically in essence just remaining in state_6 and reading characters
+j keep_reading_characters_6			# basically in essence just remaining in state_6 and reading characters
 
 
 

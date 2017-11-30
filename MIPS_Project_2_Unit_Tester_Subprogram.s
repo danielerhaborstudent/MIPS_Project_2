@@ -1,7 +1,7 @@
 # PROGRAM: Hello, World!
 .data # Data declaration section
 
-hex_8: .byte  '0','0','0','f','0','0','a','1',',' #'7','F','F','f',','
+hex_8: .byte  'f','F','f','F','f','F','f','f',',' #'7','F','F','f',','
 			# '7','F','F','f','\n'
 			# '7','F','F','f','0','0','a','1','\n'
 			# '0','0','0','f','0','0','a','1',','
@@ -33,12 +33,15 @@ main: # Start of code section
 
 sub2_call:
 la $a1, hex_8 		# assign the argument hex_8 to the parameter $a1 of sub_program 2
-addi $sp, $sp -4    # allocate space to store return value from sub_2
-
-
+addi $sp, $sp, -4    # allocate space to store return value from sub_2
+jal subProgram_2 	# call subProgram_2
+lw $s3, 0($sp)      # load the return value from the stack into $s3 
+addi $sp, $sp, 4	# close the stack frame for the return value
 after_sub2_call:
 
-
+li $v0, 1
+move $a0, $s3      # Print out the decimal value in $s3 	
+syscall
 
 
 
@@ -51,7 +54,7 @@ syscall # Exit program
 subProgram_1:
 
 # Converts a single hexadecimal character to decimal
-# Is called in SubProgram_2
+# Is called in subProgram_2
 # takes in argument $a0 a hexadecimal character which is a byte '0' - '9'; 'A' - 'F'; 'a' - 'f'
 # returns $v0 a decimal digit of the hexadecimal character
 bge $a0, 48, check_LE_57
@@ -106,8 +109,8 @@ lb $s1, 0($a1)          # load element at $a1[0] to $s1 to be used in sub1_call.
 lb $s2, 1($a1)          # Load element at $a1[1] to $s2. If this value is a comma add only and return add else add and sll 4
 
 sub1_call:
-move $a0, $s1 	# assign the argument $s1 to the parameter $a0 of sub_ program 1
-jal subProgram_1	# Call sub program 1
+move $a0, $s1 	# assign the argument $s1 to the parameter $a0 of subProgram_1
+jal subProgram_1	# Call subProgram_1
 move $s0, $v0	# return value from $v0 and store in $s0
 after_sub1_call:
 
@@ -123,13 +126,12 @@ addu $t4, $t4, $s0 		# $t4 += $s0 basically value += sub1($s1); where $s1 is val
 lw $ra, 0($sp)         # get sub_2 return address from the stack again
 addi $sp, $sp, 4       # Close sub_2 return address stack frame
 
-
-
-
+sw $t4, 0($sp)        # result value is stored into the space allocated in the call of subProgram_2
+jr $ra  			# return 
 
 
 add_shift:
-addu $t4, $t4, $s0 		# $t4 += $s0 basically value += sub1($s1); where $s1 is value at [hex_8 + offset]  which was loaded into $a1
+addu $t4, $t4, $s0 		# $t4 += $s0 basically value += subProgram_1($s1); where $s1 is value at [hex_8 + offset]  which was loaded into $a1
 sll $t4, $t4, 4         # shift $t4 4 bits to the left and store in $t4 hence 0x0000002A become 0x000002A0 after operation
 
 addi $a1, $a1, 1      	# increment $a1 so we get the next character in hex_8

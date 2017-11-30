@@ -1,7 +1,7 @@
 # PROGRAM: Hello, World!
 .data # Data declaration section
 
-hex_8: .byte '7','F','F','f',','
+hex_8: .byte  '0','0','0','f','0','0','a','1',',' #'7','F','F','f',','
 			# '7','F','F','f','\n'
 			# '7','F','F','f','0','0','a','1','\n'
 			# '0','0','0','f','0','0','a','1',','
@@ -10,16 +10,27 @@ hex_8: .byte '7','F','F','f',','
 
 main: # Start of code section
 
+prep_iter_hex_8:
+li $t0, 0		# index to iterate through hex_8
+iter_hex_8:
+lb $s1, hex_8($t0)	# $a0 = hex_8[$t0]
+beq $s1, ',', Exit # Leave the program when we hit a comma or newline
+beq $s1, '\n', Exit
 sub1_call:
-li $a0, '6'		# Argument for #sub program 1 loaded into $a0
+move $a0, $s1 	# assign the argument $s1 to the parameter $a0 of sub_ program 1
 jal subProgram_1	# Call sub program 1
 move $s0, $v0	# return value from $v0 and store in $s0
 after_sub1_call:
 
-
 li $v0, 1
-move $a0, $s0 	# Print the integer in $s1 which is the decimal of the hexadecimal argument in $a0
+move $a0, $s0 	# Print the integer in $s0 which is the decimal of the hexadecimal character in $s1; 
 syscall
+
+addi $t0, $t0, 1	# $t0++
+j iter_hex_8
+
+
+
 
 
 Exit:
@@ -68,4 +79,9 @@ j sub_1_return	# retun back to caller
 
 sub_1_return:
 jr $ra
+
+
+subProgram_2:
+
+
 

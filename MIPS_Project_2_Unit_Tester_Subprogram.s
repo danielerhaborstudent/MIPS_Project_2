@@ -10,24 +10,34 @@ hex_8: .byte  '0','0','0','f','0','0','a','1',',' #'7','F','F','f',','
 
 main: # Start of code section
 
-prep_iter_hex_8:
-li $t0, 0		# index to iterate through hex_8
-iter_hex_8:
-lb $s1, hex_8($t0)	# $a0 = hex_8[$t0]
-beq $s1, ',', Exit # Leave the program when we hit a comma or newline
-beq $s1, '\n', Exit
-sub1_call:
-move $a0, $s1 	# assign the argument $s1 to the parameter $a0 of sub_ program 1
-jal subProgram_1	# Call sub program 1
-move $s0, $v0	# return value from $v0 and store in $s0
-after_sub1_call:
+# prep_iter_hex_8:
+# li $t0, 0		# index to iterate through hex_8
+# iter_hex_8:
+# lb $s1, hex_8($t0)	# $a0 = hex_8[$t0]
+# beq $s1, ',', Exit # Leave the program when we hit a comma or newline
+# beq $s1, '\n', Exit
 
-li $v0, 1
-move $a0, $s0 	# Print the integer in $s0 which is the decimal of the hexadecimal character in $s1; 
-syscall
 
-addi $t0, $t0, 1	# $t0++
-j iter_hex_8
+# sub1_call:
+# move $a0, $s1 	# assign the argument $s1 to the parameter $a0 of sub_ program 1
+# jal subProgram_1	# Call sub program 1
+# move $s0, $v0	# return value from $v0 and store in $s0
+# after_sub1_call:
+
+# li $v0, 1
+# move $a0, $s0 	# Print the integer in $s0 which is the decimal of the hexadecimal character in $s1; 
+# syscall
+
+# addi $t0, $t0, 1	# $t0++
+# j iter_hex_8
+
+sub2_call:
+la $a1, hex_8 		# assign the argument hex_8 to the parameter $a1 of sub_program 2
+addi $sp, $sp -4    # allocate space to store return value from sub_2
+
+
+after_sub2_call:
+
 
 
 
@@ -82,6 +92,61 @@ jr $ra
 
 
 subProgram_2:
+
+# Converts either a comma terminated hex string to a decimal or a endl terminated hex string
+# Takes in argument in $a1 which is the memory address of the array of hexadecimal characters either ending with a comma or a newline
+
+addi $sp, $sp, -4		# Creat space for stack to allocate $ra
+sw $ra, 0($sp)			# Store return address of stack there will be useful later when we want to call and return from sub one
+li $t4, 0				# Initialize value $t4 = 0
+
+Loop_hex_8:
+
+lb $s1, 0($a1)          # load element at $a1[0] to $s1 to be used in sub1_call. This is our single hex character from our hex_8
+lb $s2, 1($a1)          # Load element at $a1[1] to $s2. If this value is a comma add only and return add else add and sll 4
+
+sub1_call:
+move $a0, $s1 	# assign the argument $s1 to the parameter $a0 of sub_ program 1
+jal subProgram_1	# Call sub program 1
+move $s0, $v0	# return value from $v0 and store in $s0
+after_sub1_call:
+
+
+# If value at address + 1 is a comma or newline just add and return, else add and shift to the left
+beq $s2, ',', just_add_return
+beq $s2, '\n' just_add_return
+j add_shift
+
+just_add_return:
+addu $t4, $t4, $s0 		# $t4 += $s0 basically value += sub1($s1); where $s1 is value at [hex_8 + offset]  which was loaded into $a1
+
+lw $ra, 0($sp)         # get sub_2 return address from the stack again
+addi $sp, $sp, 4       # Close sub_2 return address stack frame
+
+
+
+
+
+
+add_shift:
+addu $t4, $t4, $s0 		# $t4 += $s0 basically value += sub1($s1); where $s1 is value at [hex_8 + offset]  which was loaded into $a1
+sll $t4, $t4, 4         # shift $t4 4 bits to the left and store in $t4 hence 0x0000002A become 0x000002A0 after operation
+
+addi $a1, $a1, 1      	# increment $a1 so we get the next character in hex_8
+j Loop_hex_8
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

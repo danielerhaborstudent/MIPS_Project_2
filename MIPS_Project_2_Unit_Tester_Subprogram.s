@@ -1,10 +1,11 @@
 # PROGRAM: Hello, World!
 .data # Data declaration section
 
-hex_8: .byte  'f','F','f','F','f','F','f','f',',' #'7','F','F','f',','
+hex_8: .byte  '0','0','0','7','0','f','F','f',',' #'7','F','F','f',','
 			# '7','F','F','f','\n'
 			# '7','F','F','f','0','0','a','1','\n'
 			# '0','0','0','f','0','0','a','1',','
+			# 'f','F','f','F','f','F','f','f',','
 
 .text # Assembly language instructions
 
@@ -31,6 +32,7 @@ main: # Start of code section
 # addi $t0, $t0, 1	# $t0++
 # j iter_hex_8
 
+
 sub2_call:
 la $a1, hex_8 		# assign the argument hex_8 to the parameter $a1 of sub_program 2
 addi $sp, $sp, -4    # allocate space to store return value from sub_2
@@ -39,9 +41,17 @@ lw $s3, 0($sp)      # load the return value from the stack into $s3
 addi $sp, $sp, 4	# close the stack frame for the return value
 after_sub2_call:
 
-li $v0, 1
-move $a0, $s3      # Print out the decimal value in $s3 	
-syscall
+# li $v0, 1
+# move $a0, $s3      # Print out the decimal value in $s3 	
+# syscall
+
+sub3_call:
+addi $sp, $sp, -4  # open stack frame for parameter in subProgram_3
+sw $s3, 0($sp) # store argument $s3 which holds the integer in to the stack frame for parameter for subProgram_3
+jal subProgram_3 # call subProgram_3
+addi $sp, $sp, 4  # close stack frame for parameter in subProgram_3
+after_sub3_call:
+
 
 
 
@@ -96,8 +106,10 @@ jr $ra
 
 subProgram_2:
 
-# Converts either a comma terminated hex string to a decimal or a endl terminated hex string
+# Converts either a comma terminated hex string to a decimal or a endl terminated hex string to its decimal equivalent
 # Takes in argument in $a1 which is the memory address of the array of hexadecimal characters either ending with a comma or a newline
+# calls subProgram_1.
+# Returns the decimal value to the stack
 
 addi $sp, $sp, -4		# Creat space for stack to allocate $ra
 sw $ra, 0($sp)			# Store return address of stack there will be useful later when we want to call and return from sub one
@@ -137,6 +149,38 @@ sll $t4, $t4, 4         # shift $t4 4 bits to the left and store in $t4 hence 0x
 addi $a1, $a1, 1      	# increment $a1 so we get the next character in hex_8
 j Loop_hex_8
 
+
+
+subProgram_3:
+# Takes in a decimal integer value in the stack parameter and prints it out
+# Does not return anything
+lw $s4 0($sp)		# Load the parameter from the stack into $s4
+bltz $s4, negative_handler		# If the value is negative [0x80000000,0xFFFFFFFF] divu by 10,000 and print quo and rem separately
+j regular_handler      # else print normally for [0x00000000,0x7FFFFFFF] 
+negative_handler:
+# Handling negative values
+li $t4, 10000   # $t4  = 10,000
+divu $s4, $t4  # $s4 / 1000 (unsigned) quotient stored in low and remainder stored in high
+mflo $s5		# quotient stored here
+mfhi $s6		# remainder stored here
+
+# print the quotient then print the remainder
+
+li $v0, 1
+move $a0, $s5 # print quotient
+syscall
+
+li $v0, 1
+move $a0, $s6	# print remainder
+syscall
+jr $ra   # return to caller
+
+regular_handler:
+# just print the integer as normal
+li $v0, 1
+move $a0, $s4		# print the integer in $s4 which is our integer we got from the stack at $s0
+syscall
+jr $ra    # return to caller
 
 
 

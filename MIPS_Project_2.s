@@ -38,7 +38,7 @@ prep_init_temp_string:
 li $t1, 0		# $t1 = 0	index for temp_string
 init_temp_string:
 beq $t1, 1001, after_init_temp_string
-sb $zero, temp_string($t1)
+sb $zero, temp_string($t1)     # Initialize temp_string to NULL
 addi $t1, $t1, 1
 j init_temp_string
 after_init_temp_string:
@@ -47,7 +47,7 @@ prep_init_hex_8_or_more:
 li $t0, 0
 init_hex_8_or_more:
 beq $t0, 1001, after_init_hex_8_or_more
-sb $zero, hex_8_or_more($t0)
+sb $zero, hex_8_or_more($t0) 			# Initialize hex_8_or_more to NULL
 addi $t0, $t0, 1
 j init_hex_8_or_more
 after_init_hex_8_or_more:
@@ -315,7 +315,7 @@ check_index_C:
 bgt $t0, 8, tooLargeC_zero_Next_temp_string		# If the index is greater than 8, we print("too large,"), 
 												# zero out hex_8_or_more and get the next_temp (we have to leave the state machine)
 # Else we print hex_8_or_more with the comma and get the next temp_string
-# For now just print the value later on we will call sub_2 and then sub_3 then print a comma
+
 sub2_call_C:
 la $a1, hex_8_or_more 		# assign the argument hex_8_or_more to the parameter $a1 of subProgram_2
 addi $sp, $sp, -4    # allocate space to store return value from subProgram_2
@@ -335,9 +335,7 @@ COMMA:
 li $v0, 11
 la $a0, ','
 syscall
-# li $v0, 4			# Else we print hex_8_or_more with the comma and get the next temp_string
-# la $a0, hex_8_or_more # For now just print the value later on we will call sub_2 and then sub_3 here 
-# syscall
+
 j after_State_Machine
 
 
@@ -374,7 +372,7 @@ j check_too_large_newline
 check_index_N:
 bgt $t9, 8, tooLarge_exit_program		# If the index $t9 > 8 then print("too large") and exit the program
 # Else print hex_8_or_more
-# printing temporarily for now. Here sub_2 will be called then sub_3 to print the value	
+
 
 sub2_call_N:
 la $a1, hex_8_or_more 		# assign the argument hex_8_or_more to the parameter $a1 of sub_program 2
@@ -393,19 +391,6 @@ after_sub3_call_N:
 
 j after_Load_Char # After printing then we are done
 
-
-
-
-# li $t9, 0							# printing temporarily for now. Here sub_2 will be called then sub_3 to print the value		
-# print_hex_8_or_more_no_endl:
-# lb $t8, hex_8_or_more($t9)				# iterate through hex_8_or_more
-# beq $t8, '\n', after_Load_Char			# and print the characters until we see a newline. When we see a newline we exit the entire program because we are done
-# 										# with user_input 
-# li $v0, 11			# Print character in $t8 
-# move $a0, $t8
-# syscall
-# addi $t9, $t9, 1
-# j print_hex_8_or_more_no_endl
 
 tooLarge_exit_program:		
 li $v0, 4
@@ -510,6 +495,8 @@ subProgram_2:
 # Converts either a comma terminated hex string to a decimal or a endl terminated hex string to its decimal equivalent
 # Takes in argument in $a1 which is the memory address of the array of hexadecimal characters either ending with a comma or a newline
 # calls subProgram_1.
+# uses $a1 as parameter
+# other registers used are: $t4, $s1, $s2, $v0
 # Returns the decimal value to the stack
 
 addi $sp, $sp, -4		# Creat space for stack to allocate $ra
@@ -553,38 +540,9 @@ j Loop_hex_8
 
 
 subProgram_3:
-# # Takes in a decimal integer value in the stack parameter and prints it out
-# # Does not return anything
-# lw $s4 0($sp)		# Load the parameter from the stack into $s4
-# bltz $s4, negative_handler		# If the value is negative [0x80000000,0xFFFFFFFF] divu by 10,000 and print quo and rem separately
-# j regular_handler      # else print normally for [0x00000000,0x7FFFFFFF] 
-# negative_handler:
-# # Handling negative values
-# li $t4, 10000   # $t4  = 10,000
-# divu $s4, $t4  # $s4 / 1000 (unsigned) quotient stored in low and remainder stored in high
-# mflo $s5		# quotient stored here
-# mfhi $s6		# remainder stored here
-
-# # print the quotient then print the remainder
-
-# li $v0, 1
-# move $a0, $s5 # print quotient
-# syscall
-
-# li $v0, 1
-# move $a0, $s6	# print remainder
-# syscall
-# jr $ra   # return to caller
-
-# regular_handler:
-# # just print the integer as normal
-# li $v0, 1
-# move $a0, $s4		# print the integer in $s4 which is our integer we got from the stack at $s0
-# syscall
-# jr $ra    # return to caller
-
 # Takes in a decimal integer value in the stack parameter and prints it out
 # Does not return anything
+# Registers used: $s4, $t4, $t7, $s6
 # Use array_integers2C to hold the values after mod iterations and prints those values when the parameter passed is negative
 lw $s4 0($sp)		# Load the parameter from the stack into $s4
 bltz $s4, negative_handler		# If the value is negative [0x80000000,0xFFFFFFFF] do divu $s4, 10, print rem and $s4 = quo until $s4 = 0

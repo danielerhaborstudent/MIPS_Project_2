@@ -1,13 +1,16 @@
 # PROGRAM: Hello, World!
 .data # Data declaration section
 
-hex_8: .byte  '8','7','6','5','4','3','2','1',',' #'7','F','F','f',','
+hex_8: .byte  'f','F','f','F','f','F','f','f',',' #'7','F','F','f',','
 			
 			# 
 			# '7','F','F','f','\n'
 			# '7','F','F','f','0','0','a','1','\n'
 			# '0','0','0','f','0','0','a','1',','
 			# 'f','F','f','F','f','F','f','f',','
+array_integers2C: .space 10 # This space will be used to store an array of integers for [0x80000000,0xFFFFFFFF]
+							  #  in reverse. The length is always 10 because number of integers in this range is always 10.
+							  #  $t7 will be my index for this when I store and when I print
 
 .text # Assembly language instructions
 
@@ -43,17 +46,15 @@ lw $s3, 0($sp)      # load the return value from the stack into $s3
 addi $sp, $sp, 4	# close the stack frame for the return value
 after_sub2_call:
 
-li $v0, 11
-li $a0, '\n'      # Print out newline	
-syscall
 
-li $v0, 1
-move $a0, $s3      # Print out the decimal value in $s3 	
-syscall
 
-li $v0, 11
-li $a0, '\n'      # Print out newline	
-syscall
+# li $v0, 1
+# move $a0, $s3      # Print out the decimal value in $s3 	
+# syscall
+
+# li $v0, 11
+# li $a0, '\n'      # Print out newline	
+# syscall
 
 sub3_call:
 addi $sp, $sp, -4  # open stack frame for parameter in subProgram_3
@@ -164,22 +165,40 @@ j Loop_hex_8
 subProgram_3:
 # Takes in a decimal integer value in the stack parameter and prints it out
 # Does not return anything
+# Use array_integers2C to hold the values after mod iterations and prints those values when the parameter passed is negative
 lw $s4 0($sp)		# Load the parameter from the stack into $s4
 bltz $s4, negative_handler		# If the value is negative [0x80000000,0xFFFFFFFF] do divu $s4, 10, print rem and $s4 = quo until $s4 = 0
 j regular_handler      # else print normally for [0x00000000,0x7FFFFFFF] 
+
 negative_handler:
 # Handling negative values
 prep_LoopDiv2C:
 li $t4, 10   # $t4  = 10
+li $t7, 9	# $t7 = 9
 LoopDiv2C:
 divu $s4, $t4  # $s4 / 10 (unsigned) quotient stored in low and remainder stored in high
 mflo $s4		# $s4 = $s4 // 10 Quotient stored here
 mfhi $s5		# remainder stored here
+sb $s5, array_integers2C($t7)  # array_integers_2CR[$t7] = $s5
+beq $s4, $zero, after_LoopDiv2C # If the quotient is 0 then we have reached done Most Sig Digit mod 10 and assigned it to $s5 so we leave the loop 
+#Else
+addi $t7, $t7, -1  # Decrement index 
+j LoopDiv2C 	   # Get next integer
+after_LoopDiv2C:
+
+prep_print_array_integers2C:
+li $t7, 0 # $t7 index for array_integers_
+print_array_integers2C:
+beq $t7, 10, sub_3_return  # return when index $t7 > 9 because we are done printing
+lb $s6, array_integers2C($t7)  # $s6 = array_integers2C[$t7]
 
 li $v0, 1
-move $a0, $s5	# print remainder
+move $a0, $s6		# Print value in $s6
 syscall
-jr $ra   # return to caller
+
+addi $t7, $t7, 1 	# $t7++
+j print_array_integers2C
+
 
 regular_handler:
 # just print the integer as normal

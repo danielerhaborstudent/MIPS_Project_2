@@ -1,7 +1,9 @@
 # PROGRAM: Hello, World!
 .data # Data declaration section
 
-hex_8: .byte  '0','0','0','7','0','f','F','f',',' #'7','F','F','f',','
+hex_8: .byte  '8','7','6','5','4','3','2','1',',' #'7','F','F','f',','
+			
+			# 
 			# '7','F','F','f','\n'
 			# '7','F','F','f','0','0','a','1','\n'
 			# '0','0','0','f','0','0','a','1',','
@@ -41,9 +43,17 @@ lw $s3, 0($sp)      # load the return value from the stack into $s3
 addi $sp, $sp, 4	# close the stack frame for the return value
 after_sub2_call:
 
-# li $v0, 1
-# move $a0, $s3      # Print out the decimal value in $s3 	
-# syscall
+li $v0, 11
+li $a0, '\n'      # Print out newline	
+syscall
+
+li $v0, 1
+move $a0, $s3      # Print out the decimal value in $s3 	
+syscall
+
+li $v0, 11
+li $a0, '\n'      # Print out newline	
+syscall
 
 sub3_call:
 addi $sp, $sp, -4  # open stack frame for parameter in subProgram_3
@@ -155,23 +165,19 @@ subProgram_3:
 # Takes in a decimal integer value in the stack parameter and prints it out
 # Does not return anything
 lw $s4 0($sp)		# Load the parameter from the stack into $s4
-bltz $s4, negative_handler		# If the value is negative [0x80000000,0xFFFFFFFF] divu by 10,000 and print quo and rem separately
+bltz $s4, negative_handler		# If the value is negative [0x80000000,0xFFFFFFFF] do divu $s4, 10, print rem and $s4 = quo until $s4 = 0
 j regular_handler      # else print normally for [0x00000000,0x7FFFFFFF] 
 negative_handler:
 # Handling negative values
-li $t4, 10000   # $t4  = 10,000
-divu $s4, $t4  # $s4 / 1000 (unsigned) quotient stored in low and remainder stored in high
-mflo $s5		# quotient stored here
-mfhi $s6		# remainder stored here
-
-# print the quotient then print the remainder
-
-li $v0, 1
-move $a0, $s5 # print quotient
-syscall
+prep_LoopDiv2C:
+li $t4, 10   # $t4  = 10
+LoopDiv2C:
+divu $s4, $t4  # $s4 / 10 (unsigned) quotient stored in low and remainder stored in high
+mflo $s4		# $s4 = $s4 // 10 Quotient stored here
+mfhi $s5		# remainder stored here
 
 li $v0, 1
-move $a0, $s6	# print remainder
+move $a0, $s5	# print remainder
 syscall
 jr $ra   # return to caller
 
@@ -180,6 +186,10 @@ regular_handler:
 li $v0, 1
 move $a0, $s4		# print the integer in $s4 which is our integer we got from the stack at $s0
 syscall
+j sub_3_return
+
+
+sub_3_return:
 jr $ra    # return to caller
 
 
